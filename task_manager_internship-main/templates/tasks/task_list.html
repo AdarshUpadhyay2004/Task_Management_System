@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Tasks{% endblock %}
+{% block header %}
+  {% if role == "MANAGER" %}
+    All Tasks
+  {% elif role == "TEAM_LEAD" %}
+    Team Tasks
+  {% else %}
+    My Tasks
+  {% endif %}
+{% endblock %}
+{% block content %}
+  {% if active_session %}
+    <div class="mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+      Running: <span class="font-semibold">{{ active_session.task.title }}</span>
+    </div>
+  {% endif %}
+
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-sm text-slate-600">{{ tasks|length }} tasks</div>
+    <div class="flex gap-2 flex-wrap justify-end">
+      <a class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50" href="{% url 'task_risk_api' %}">Risk API</a>
+      <a class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50" href="{% url 'task_risk_dashboard' %}">Risk Dashboard</a>
+      {% if role == "MANAGER" %}
+        <a class="px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50" href="{% url 'activity_log_timeline' %}">Activity Logs</a>
+        <a class="px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800" href="{% url 'report_completed_tasks' %}">Reports</a>
+      {% endif %}
+      {% if can_create_task %}
+        <a class="px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800" href="{% url 'task_create' %}">Assign Task</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="text-left p-3">Title</th>
+          <th class="text-left p-3">Assigned</th>
+          <th class="text-left p-3">Status</th>
+          <th class="text-left p-3">Risk</th>
+          <th class="text-right p-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tasks %}
+          <tr class="border-t border-slate-200">
+            <td class="p-3">
+              <div class="font-medium">{{ t.title }}</div>
+              <div class="text-xs text-slate-500">Created by {{ t.created_by.email }}</div>
+            </td>
+            <td class="p-3 text-slate-700">{% if t.assigned_to %}{{ t.assigned_to.email }}{% else %}Unassigned{% endif %}</td>
+            <td class="p-3">
+              <span class="px-2 py-1 rounded text-xs {% if t.status == 'DONE' %}bg-emerald-100 text-emerald-800{% elif t.status == 'IN_PROGRESS' %}bg-amber-100 text-amber-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                {{ t.get_status_display }}
+              </span>
+              {% if t.due_date %}<div class="text-xs text-slate-500 mt-1">Due {{ t.due_date }}</div>{% endif %}
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-1 rounded text-xs
+                {% if t.risk_level == 'Delayed' %}bg-rose-100 text-rose-800
+                {% elif t.risk_level == 'High Risk' %}bg-orange-100 text-orange-800
+                {% elif t.risk_level == 'At Risk' %}bg-amber-100 text-amber-800
+                {% else %}bg-emerald-100 text-emerald-800{% endif %}">
+                {{ t.risk_level }}
+              </span>
+              <div class="text-xs text-slate-500 mt-1">{{ t.progress_percentage }}% progress</div>
+              {% if t.warning_message %}<div class="text-xs text-rose-700 mt-1">{{ t.warning_message }}</div>{% endif %}
+            </td>
+            <td class="p-3 text-right space-x-2">
+              {% if can_update_task %}
+                <a class="text-slate-700 hover:underline" href="{% url 'task_edit' t.id %}">Edit</a>
+                <a class="text-rose-700 hover:underline" href="{% url 'task_delete' t.id %}">Delete</a>
+              {% elif role == "EMPLOYEE" and t.status != "DONE" %}
+                <button data-action="start" data-id="{{ t.id }}" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Start</button>
+                <button data-action="stop" data-id="{{ t.id }}" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50">Stop</button>
+                <button data-action="done" data-id="{{ t.id }}" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500">Done</button>
+              {% else %}
+                <span class="text-slate-500">View only</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td class="p-3 text-slate-500" colspan="5">No tasks available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if role == "EMPLOYEE" %}
+    <script>
+      function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+      }
+
+      async function post(url) {
+        const res = await fetch(url, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Request failed");
+        return data;
+      }
+
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button[data-action]");
+        if (!btn) return;
+        const taskId = btn.dataset.id;
+        const action = btn.dataset.action;
+        try {
+          if (action === "start") await post(`/tasks/${taskId}/start/`);
+          if (action === "stop") await post(`/tasks/${taskId}/stop/`);
+          if (action === "done") await post(`/tasks/${taskId}/done/`);
+          window.location.reload();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    </script>
+  {% endif %}
+{% endblock %}

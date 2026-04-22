@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}New User{% endblock %}
+{% block header %}Create User{% endblock %}
+{% block content %}
+  <div class="bg-white border border-slate-200 rounded-xl p-6 max-w-xl">
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700">First name</label>
+          <input name="first_name" value="{{ form.first_name.value|default:'' }}" placeholder="First name"
+                 class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 shadow-sm
+                        focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Last name</label>
+          <input name="last_name" value="{{ form.last_name.value|default:'' }}" placeholder="Last name"
+                 class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 shadow-sm
+                        focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Email</label>
+        <input name="email" type="email" value="{{ form.email.value|default:'' }}" placeholder="name@company.com"
+               class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 shadow-sm
+                      focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition"
+               required />
+        {% for err in form.email.errors %}<div class="text-sm text-rose-700 mt-1">{{ err }}</div>{% endfor %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Username (optional)</label>
+        <input name="username" value="{{ form.username.value|default:'' }}" placeholder="Leave empty to auto-generate"
+               class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 shadow-sm
+                      focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition" />
+        <div class="text-xs text-slate-500 mt-1">If empty, it uses the email prefix.</div>
+        {% for err in form.username.errors %}<div class="text-sm text-rose-700 mt-1">{{ err }}</div>{% endfor %}
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Role</label>
+          <select name="role" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition">
+            {% for value, label in form.role.field.choices %}
+              <option value="{{ value }}" {% if form.role.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Department</label>
+          <input name="department" value="{{ form.department.value|default:'' }}" placeholder="Engineering"
+                 class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 shadow-sm
+                        focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition" />
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button class="px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Create & email password</button>
+        <a class="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50" href="{% url 'employee_list' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

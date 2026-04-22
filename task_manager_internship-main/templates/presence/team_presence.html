@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Team Presence{% endblock %}
+{% block header %}Team Presence{% endblock %}
+{% block content %}
+  {{ user_statuses|json_script:"presence-data" }}
+  {{ user_status_api|json_script:"presence-api-url" }}
+
+  <div class="space-y-6">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-semibold text-slate-900">Live Team Status</h2>
+          <p class="mt-2 text-sm text-slate-600">Track who is online, idle, or offline in real time.</p>
+        </div>
+        <div class="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-right">
+          <div class="text-sm text-emerald-700">Online Users</div>
+          <div id="online-count" class="text-3xl font-semibold text-slate-900">{{ online_count }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div class="border-b border-slate-200 px-5 py-4 bg-slate-50">
+        <p class="text-sm text-slate-600">Green means active now, yellow means idle, and gray means offline.</p>
+      </div>
+
+      <div class="divide-y divide-slate-200" id="presence-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const initialUsers = JSON.parse(document.getElementById("presence-data").textContent);
+    const presenceList = document.getElementById("presence-list");
+    const onlineCount = document.getElementById("online-count");
+    const presenceUsers = new Map(initialUsers.map((user) => [String(user.id), user]));
+    let socket = null;
+    const presenceApiUrl = JSON.parse(document.getElementById("presence-api-url").textContent);
+    let refreshInterval = null;
+
+    function statusClass(status) {
+      if (status === "Online") return "bg-emerald-500";
+      if (status === "Idle") return "bg-amber-400";
+      return "bg-slate-400";
+    }
+
+    function rowMarkup(user) {
+      const typingText = user.is_typing ? '<div class="text-xs text-sky-600 mt-1">typing...</div>' : "";
+      return `
+        <div class="px-5 py-4 flex items-center justify-between gap-4" data-user-id="${user.id}">
+          <div class="flex items-center gap-3">
+            <span class="inline-block h-3 w-3 rounded-full ${statusClass(user.status)}"></span>
+            <div>
+              <div class="font-medium text-slate-900">${user.name}</div>
+              <div class="text-sm text-slate-500">${user.email}</div>
+              ${typingText}
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-sm font-medium text-slate-700">${user.status}</div>
+            <div class="text-xs text-slate-500">${user.last_seen_text}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderList() {
+      const users = Array.from(presenceUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
+      presenceList.innerHTML = users.map(rowMarkup).join("");
+      const onlineUsers = users.filter((user) => user.status === "Online").length;
+      onlineCount.textContent = String(onlineUsers);
+    }
+
+    function updateUser(user) {
+      presenceUsers.set(String(user.id), user);
+      renderList();
+    }
+
+    function sendHeartbeat() {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "heartbeat" }));
+      }
+    }
+
+    function sendTyping(isTyping) {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "typing", is_typing: isTyping }));
+      }
+    }
+
+    async function refreshStatuses() {
+      try {
+        const response = await fetch(presenceApiUrl, {
+          headers: {
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        });
+        const data = await response.json();
+        data.results.forEach(updateUser);
+        if (typeof data.online_count === "number") {
+          onlineCount.textContent = String(data.online_count);
+        }
+      } catch (error) {
+        // Keep the latest rendered state if polling fails.
+      }
+    }
+
+    function connectPresenceSocket() {
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      socket = new WebSocket(`${protocol}://${window.location.host}/ws/presence/`);
+
+      socket.onopen = function () {
+        sendHeartbeat();
+      };
+
+      socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        if (data.type === "status_update") {
+          updateUser(data.user);
+          if (typeof data.online_count === "number") {
+            onlineCount.textContent = String(data.online_count);
+          }
+        }
+        if (data.type === "typing_update") {
+          updateUser(data.user);
+        }
+      };
+
+      socket.onclose = function () {
+        window.setTimeout(connectPresenceSocket, 3000);
+      };
+    }
+
+    let typingTimeout = null;
+    ["click", "keydown", "mousemove"].forEach((eventName) => {
+      window.addEventListener(eventName, function () {
+        sendHeartbeat();
+      });
+    });
+
+    window.addEventListener("keydown", function () {
+      sendTyping(true);
+      if (typingTimeout) {
+        window.clearTimeout(typingTimeout);
+      }
+      typingTimeout = window.setTimeout(function () {
+        sendTyping(false);
+      }, 1500);
+    });
+
+    renderList();
+    connectPresenceSocket();
+    refreshInterval = window.setInterval(refreshStatuses, 60000);
+  </script>
+{% endblock %}

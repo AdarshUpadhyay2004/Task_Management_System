@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Team Lead Dashboard{% endblock %}
+{% block header %}Team Lead Dashboard{% endblock %}
+{% block content %}
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white border border-slate-200 rounded-xl p-4">
+      <div class="text-sm text-slate-500">Total Team Tasks</div>
+      <div class="text-2xl font-semibold">{{ total_tasks }}</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-4">
+      <div class="text-sm text-slate-500">New</div>
+      <div class="text-2xl font-semibold">{{ new_tasks }}</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-4">
+      <div class="text-sm text-slate-500">In Progress</div>
+      <div class="text-2xl font-semibold">{{ in_progress_tasks }}</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-4">
+      <div class="text-sm text-slate-500">Completed</div>
+      <div class="text-2xl font-semibold">{{ completed_tasks }}</div>
+    </div>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="flex items-center justify-between mb-3">
+      <div class="font-semibold">Team Members</div>
+      <a class="px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800" href="{% url 'task_create' %}">Assign Task</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="text-slate-500">
+          <tr class="text-left">
+            <th class="py-2 pr-4">Name</th>
+            <th class="py-2 pr-4">Email</th>
+            <th class="py-2">Department</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in team_members %}
+            <tr class="border-t border-slate-100">
+              <td class="py-2 pr-4">{{ member.get_full_name|default:member.username }}</td>
+              <td class="py-2 pr-4 text-slate-500">{{ member.email }}</td>
+              <td class="py-2">{{ member.department|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr class="border-t border-slate-100">
+              <td class="py-3 text-slate-500" colspan="3">No team members found for your department yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

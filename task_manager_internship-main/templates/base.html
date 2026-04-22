@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Task Manager{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% load static %}
+  </head>
+  <body class="bg-slate-50 text-slate-900">
+    <div class="min-h-screen flex">
+      <aside class="w-64 bg-[#0b1b3a] text-slate-100 hidden md:block">
+        <div class="p-4 border-b border-white/10">
+          <div class="text-lg font-semibold tracking-tight">Task Manager</div>
+          <div class="text-sm text-slate-300 break-all">{{ request.user.email }}</div>
+          {% if request.current_role %}
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400 mt-2">{{ request.current_role|cut:"_" }}</div>
+          {% endif %}
+        </div>
+        <nav class="p-3 space-y-1">
+          {% if request.user.is_authenticated %}
+            {% if request.current_role == "MANAGER" %}
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'manager_dashboard' %}">Dashboard</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'task_list' %}">All Tasks</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'activity_log_timeline' %}">Activity Logs</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'report_completed_tasks' %}">Reports</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'productivity_heatmap' %}">Analytics</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'kpi_dashboard' %}">KPI Dashboard</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'note_list' %}">My Notes</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'employee_list' %}">Users</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'profile_settings' %}">Profile Settings</a>
+            {% elif request.current_role == "TEAM_LEAD" %}
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'team_lead_dashboard' %}">Dashboard</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'task_list' %}">Team Tasks</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'task_create' %}">Assign Task</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'chatbot' %}">Chatbot</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'rewards_dashboard' %}">Rewards</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'team_presence' %}">Team Presence</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'kpi_dashboard' %}">KPI Dashboard</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'note_list' %}">My Notes</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'profile_settings' %}">Profile Settings</a>
+            {% else %}
+              {% if request.session.impersonator_id %}
+                <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'stop_impersonation' %}">Return to Manager</a>
+              {% endif %}
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'task_list' %}">My Tasks</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'chatbot' %}">Chatbot</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'rewards_dashboard' %}">Rewards</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'team_presence' %}">Team Presence</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'kpi_dashboard' %}">KPI Dashboard</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'note_list' %}">My Notes</a>
+              <a class="block px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10" href="{% url 'profile_settings' %}">Profile Settings</a>
+            {% endif %}
+
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button class="w-full text-left px-3 py-2 rounded-lg text-slate-100/90 hover:text-white hover:bg-white/10">Logout</button>
+            </form>
+          {% endif %}
+        </nav>
+      </aside>
+
+      <main class="flex-1">
+        <header class="bg-white border-b border-slate-200">
+          <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="font-semibold">{% block header %}{% endblock %}</div>
+            <div class="flex items-center gap-3">
+              {% include "notifications/notification_bell.html" %}
+              <div class="text-sm text-slate-500 md:hidden">{{ request.user.email }}</div>
+            </div>
+          </div>
+        </header>
+        <div class="max-w-6xl mx-auto px-4 py-6">
+          {% if messages %}
+            <div class="space-y-2 mb-4">
+              {% for message in messages %}
+                <div class="px-4 py-3 rounded border {% if message.tags == 'error' %}bg-rose-50 border-rose-200 text-rose-900{% elif message.tags == 'warning' %}bg-amber-50 border-amber-200 text-amber-900{% else %}bg-emerald-50 border-emerald-200 text-emerald-900{% endif %}">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+    <script src="{% static 'notifications/notifications.js' %}"></script>
+  </body>
+</html>

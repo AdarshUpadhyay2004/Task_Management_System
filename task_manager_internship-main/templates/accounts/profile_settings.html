@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Profile Settings{% endblock %}
+{% block header %}Profile Settings{% endblock %}
+
+{% block content %}
+  <div class="space-y-6">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold">Profile Images</h2>
+          <p class="text-sm text-slate-500">Update your banner and avatar.</p>
+        </div>
+        <span class="text-xs uppercase tracking-wide text-slate-400">
+          {{ request.user.get_role_display|default:"User" }}
+        </span>
+      </div>
+
+      <div class="mt-6">
+        <div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+          <img
+            src="{% if request.user.banner %}{{ request.user.banner.url }}{% else %}{% static 'images/banner-placeholder.svg' %}{% endif %}"
+            alt="Current banner"
+            class="h-48 w-full object-cover"
+          />
+          <div class="absolute left-6 bottom-4 flex items-center gap-4">
+            <div class="h-20 w-20 rounded-full border-4 border-white bg-slate-200 overflow-hidden">
+              <img
+                src="{% if request.user.avatar %}{{ request.user.avatar.url }}{% else %}{% static 'images/avatar-placeholder.svg' %}{% endif %}"
+                alt="Current avatar"
+                class="h-full w-full object-cover"
+              />
+            </div>
+            <div class="text-white">
+              <div class="text-lg font-semibold">{{ request.user.get_full_name|default:request.user.email }}</div>
+              <div class="text-sm text-white/80">{{ request.user.email }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form class="mt-6 grid gap-4" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="update_profile" value="1" />
+        {% if profile_form.errors %}
+          <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900 text-sm">
+            {{ profile_form.errors }}
+          </div>
+        {% endif %}
+        <div class="grid gap-4 md:grid-cols-2">
+          <label class="block text-sm font-medium text-slate-700">
+            Avatar
+            {{ profile_form.avatar }}
+          </label>
+          <label class="block text-sm font-medium text-slate-700">
+            Banner
+            {{ profile_form.banner }}
+          </label>
+        </div>
+        <button class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800" type="submit">
+          Save Images
+        </button>
+      </form>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-6">
+      <h2 class="text-lg font-semibold">Change Password</h2>
+      <p class="text-sm text-slate-500">Set a new password for your account.</p>
+      <form class="mt-6 grid gap-4 max-w-xl" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="change_password" value="1" />
+        {% if password_form.errors %}
+          <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900 text-sm">
+            {{ password_form.errors }}
+          </div>
+        {% endif %}
+        <label class="block text-sm font-medium text-slate-700">
+          Current password
+          {{ password_form.old_password }}
+        </label>
+        <label class="block text-sm font-medium text-slate-700">
+          New password
+          {{ password_form.new_password1 }}
+        </label>
+        <label class="block text-sm font-medium text-slate-700">
+          Confirm new password
+          {{ password_form.new_password2 }}
+        </label>
+        <button class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800" type="submit">
+          Update Password
+        </button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

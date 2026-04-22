@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Task Risk Dashboard{% endblock %}
+{% block header %}Task Risk Dashboard{% endblock %}
+{% block content %}
+  <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <div class="border-b border-slate-200 px-5 py-4 bg-slate-50">
+      <p class="text-sm text-slate-600">Smart deadline prediction highlights tasks that may be delayed based on time spent and due date.</p>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="text-left p-3">Task</th>
+            <th class="text-left p-3">Due Date</th>
+            <th class="text-left p-3">Estimated Hours</th>
+            <th class="text-left p-3">Progress</th>
+            <th class="text-left p-3">Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tasks %}
+            <tr class="border-t border-slate-200">
+              <td class="p-3 font-medium">{{ t.title }}</td>
+              <td class="p-3">{{ t.due_date|default:"-" }}</td>
+              <td class="p-3">{% if t.estimated_hours %}{{ t.estimated_hours }} hours{% else %}-{% endif %}</td>
+              <td class="p-3">{{ t.progress_percentage }}%</td>
+              <td class="p-3">
+                <span class="px-2 py-1 rounded text-xs
+                  {% if t.risk_level == 'Delayed' %}bg-rose-100 text-rose-800
+                  {% elif t.risk_level == 'High Risk' %}bg-orange-100 text-orange-800
+                  {% elif t.risk_level == 'At Risk' %}bg-amber-100 text-amber-800
+                  {% else %}bg-emerald-100 text-emerald-800{% endif %}">
+                  {{ t.risk_level }}
+                </span>
+                {% if t.warning_message %}
+                  <div class="text-xs text-rose-700 mt-1">{{ t.warning_message }}</div>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td class="p-3 text-slate-500" colspan="5">No tasks available.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

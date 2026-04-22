@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}KPI Dashboard{% endblock %}
+{% block header %}KPI Dashboard{% endblock %}
+{% block content %}
+  <div class="space-y-6">
+    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold text-slate-900">Performance KPIs</h1>
+          <p class="mt-1 text-sm text-slate-500">Track completion, delays, and productivity for the selected time window.</p>
+        </div>
+        <form method="get" class="grid gap-3 md:grid-cols-3">
+          {% if can_select_user %}
+            <select name="user" class="rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-sky-500 focus:outline-none">
+              <option value="">My dashboard</option>
+              {% for employee in employees %}
+                <option value="{{ employee.id }}" {% if selected_user_id == employee.id|stringformat:"s" %}selected{% endif %}>
+                  {{ employee.get_full_name|default:employee.email }}
+                </option>
+              {% endfor %}
+            </select>
+          {% endif %}
+          <select name="period" class="rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-sky-500 focus:outline-none">
+            <option value="7" {% if selected_period == "7" %}selected{% endif %}>Last 7 days</option>
+            <option value="30" {% if selected_period == "30" %}selected{% endif %}>Last 30 days</option>
+          </select>
+          <button type="submit" class="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Apply Filters</button>
+        </form>
+      </div>
+
+      <div class="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+        <span class="rounded-full bg-slate-100 px-3 py-1">User: {{ selected_user.get_full_name|default:selected_user.email }}</span>
+        <span class="rounded-full bg-slate-100 px-3 py-1">Range: Last {{ selected_period }} days</span>
+        <span class="rounded-full bg-slate-100 px-3 py-1">Work hours: {{ summary.total_work_hours }}</span>
+      </div>
+    </section>
+
+    {% if show_delay_alert %}
+      <section class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900">
+        <div class="font-semibold">Delay alert</div>
+        <p class="mt-1 text-sm">Delay rate is above 30%. This user may need support with planning, prioritization, or workload balancing.</p>
+      </section>
+    {% endif %}
+
+    <section class="grid gap-4 md:grid-cols-3">
+      <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="text-sm text-slate-500">Task Completion Rate</div>
+        <div class="mt-3 text-4xl font-semibold text-slate-900">{{ summary.completion_rate }}%</div>
+        <p class="mt-2 text-sm text-slate-500">{{ summary.completed_tasks }} of {{ summary.total_tasks }} assigned tasks completed.</p>
+      </article>
+      <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="text-sm text-slate-500">Delay Rate</div>
+        <div class="mt-3 text-4xl font-semibold text-slate-900">{{ summary.delay_rate }}%</div>
+        <p class="mt-2 text-sm text-slate-500">{{ summary.delayed_tasks }} tasks finished after the due date.</p>
+      </article>
+      <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="text-sm text-slate-500">Productivity Score</div>
+        <div class="mt-3 text-4xl font-semibold text-slate-900">{{ summary.productivity_score }}</div>
+        <p class="mt-2 text-sm text-slate-500">Based on completion rate, on-time work, and total tracked hours.</p>
+      </article>
+    </section>
+
+    <section class="grid gap-4 xl:grid-cols-[1.1fr_1.1fr_0.8fr]">
+      <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-900">Completion Breakdown</h2>
+          <span class="text-xs text-slate-500">Pie chart</span>
+        </div>
+        <canvas id="completionChart" height="220"></canvas>
+      </article>
+
+      <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-900">Delay Overview</h2>
+          <span class="text-xs text-slate-500">Bar chart</span>
+        </div>
+        <canvas id="delayChart" height="220"></canvas>
+      </article>
+
+      <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-900">Productivity Progress</h2>
+          <span class="text-xs text-slate-500">Progress circle</span>
+        </div>
+        <div class="mx-auto max-w-[240px]">
+          <canvas id="productivityChart" height="220"></canvas>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+      <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-900">Weekly Trend</h2>
+          <span class="text-xs text-slate-500">Completed tasks and work hours</span>
+        </div>
+        <canvas id="trendChart" height="140"></canvas>
+      </article>
+
+      <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-900">Leaderboard</h2>
+          <span class="text-xs text-slate-500">Top productivity scores</span>
+        </div>
+        <div class="space-y-3">
+          {% for row in leaderboard %}
+            <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+              <div>
+                <div class="text-sm font-semibold text-slate-900">{{ row.name }}</div>
+                <div class="text-xs text-slate-500">{{ row.total_work_hours }} hrs tracked</div>
+              </div>
+              <div class="text-right">
+                <div class="text-lg font-semibold text-slate-900">{{ row.productivity_score }}</div>
+                <div class="text-xs text-slate-500">score</div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">
+              Leaderboard is available for report-capable users when employee data exists.
+            </div>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+  </div>
+
+  {{ summary|json_script:"kpi-summary-data" }}
+  {{ trend|json_script:"kpi-trend-data" }}
+  <script>
+    const summary = JSON.parse(document.getElementById("kpi-summary-data").textContent);
+    const trend = JSON.parse(document.getElementById("kpi-trend-data").textContent);
+
+    new Chart(document.getElementById("completionChart"), {
+      type: "pie",
+      data: {
+        labels: ["Completed", "Remaining"],
+        datasets: [{
+          data: [summary.completed_tasks, Math.max(summary.total_tasks - summary.completed_tasks, 0)],
+          backgroundColor: ["#0f766e", "#dbeafe"],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { position: "bottom" }
+        }
+      }
+    });
+
+    new Chart(document.getElementById("delayChart"), {
+      type: "bar",
+      data: {
+        labels: ["On Time", "Delayed"],
+        datasets: [{
+          data: [summary.on_time_tasks, summary.delayed_tasks],
+          backgroundColor: ["#16a34a", "#f59e0b"],
+          borderRadius: 10
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+
+    new Chart(document.getElementById("productivityChart"), {
+      type: "doughnut",
+      data: {
+        labels: ["Score", "Remaining"],
+        datasets: [{
+          data: [summary.productivity_score, Math.max(100 - summary.productivity_score, 0)],
+          backgroundColor: ["#2563eb", "#e2e8f0"],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        cutout: "72%",
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
+        }
+      },
+      plugins: [{
+        id: "centerText",
+        afterDraw(chart) {
+          const { ctx } = chart;
+          const meta = chart.getDatasetMeta(0).data[0];
+          if (!meta) return;
+          ctx.save();
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "700 28px sans-serif";
+          ctx.fillText(String(summary.productivity_score), meta.x, meta.y - 8);
+          ctx.fillStyle = "#64748b";
+          ctx.font = "500 12px sans-serif";
+          ctx.fillText("out of 100", meta.x, meta.y + 16);
+          ctx.restore();
+        }
+      }]
+    });
+
+    new Chart(document.getElementById("trendChart"), {
+      data: {
+        labels: trend.map(row => row.day),
+        datasets: [
+          {
+            type: "line",
+            label: "Completed Tasks",
+            data: trend.map(row => row.completed),
+            borderColor: "#0f172a",
+            backgroundColor: "rgba(15, 23, 42, 0.12)",
+            yAxisID: "y",
+            tension: 0.35
+          },
+          {
+            type: "bar",
+            label: "Work Hours",
+            data: trend.map(row => row.hours),
+            backgroundColor: "#93c5fd",
+            borderRadius: 8,
+            yAxisID: "y1"
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, position: "left", ticks: { precision: 0 } },
+          y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false } }
+        }
+      }
+    });
+  </script>
+{% endblock %}

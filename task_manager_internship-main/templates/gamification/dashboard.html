@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Rewards{% endblock %}
+{% block header %}Rewards and Leaderboard{% endblock %}
+{% block content %}
+  <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <section class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <h2 class="text-xl font-semibold text-slate-900">My Progress</h2>
+      <p class="mt-2 text-sm text-slate-600">Complete tasks to earn points, level up, and unlock badges.</p>
+
+      <div class="mt-6 grid gap-4 sm:grid-cols-3">
+        <div class="rounded-2xl bg-sky-50 border border-sky-100 p-4">
+          <div class="text-sm text-sky-700">Points</div>
+          <div class="mt-2 text-3xl font-semibold text-slate-900">{{ profile.points }}</div>
+        </div>
+        <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
+          <div class="text-sm text-emerald-700">Level</div>
+          <div class="mt-2 text-3xl font-semibold text-slate-900">{{ profile.level }}</div>
+        </div>
+        <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4">
+          <div class="text-sm text-amber-700">Daily Streak</div>
+          <div class="mt-2 text-3xl font-semibold text-slate-900">{{ profile.streak_count }}</div>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-900">Badges</h3>
+          <span class="text-sm text-slate-500">{{ badges|length }} earned</span>
+        </div>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          {% for item in badges %}
+            <div class="rounded-2xl border border-slate-200 p-4 bg-slate-50">
+              <div class="font-semibold text-slate-900">{{ item.badge.name }}</div>
+              <p class="mt-1 text-sm text-slate-600">{{ item.badge.description }}</p>
+              <p class="mt-2 text-xs uppercase tracking-wide text-slate-500">Unlocked at {{ item.badge.points_required }} points</p>
+            </div>
+          {% empty %}
+            <div class="rounded-2xl border border-dashed border-slate-300 p-5 text-sm text-slate-500 sm:col-span-2">
+              No badges earned yet. Complete more tasks to unlock Beginner, Pro, and Expert.
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <h2 class="text-xl font-semibold text-slate-900">Leaderboard</h2>
+      <p class="mt-2 text-sm text-slate-600">Top users ranked by total points.</p>
+
+      <div class="mt-6 space-y-3">
+        {% for item in leaderboard %}
+          <div class="rounded-2xl border border-slate-200 px-4 py-4 flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-slate-900">{{ forloop.counter }}. {{ item.user.get_full_name|default:item.user.email }}</div>
+              <div class="text-sm text-slate-500">{{ item.user.email }}</div>
+            </div>
+            <div class="text-right">
+              <div class="font-semibold text-slate-900">{{ item.points }} pts</div>
+              <div class="text-sm text-slate-500">Level {{ item.level }}</div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="rounded-2xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
+            No leaderboard data yet.
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

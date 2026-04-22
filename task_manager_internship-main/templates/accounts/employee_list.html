@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block header %}Users{% endblock %}
+{% block content %}
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-sm text-slate-600">{{ employees|length }} users</div>
+    <a class="px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800" href="{% url 'employee_create' %}">New user</a>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="text-left p-3">Name</th>
+          <th class="text-left p-3">Email</th>
+          <th class="text-left p-3">Username</th>
+          <th class="text-left p-3">Role</th>
+          <th class="text-left p-3">Department</th>
+          <th class="text-right p-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in employees %}
+          <tr class="border-t border-slate-200">
+            <td class="p-3">{{ e.first_name }} {{ e.last_name }}</td>
+            <td class="p-3">{{ e.email }}</td>
+            <td class="p-3">{{ e.username }}</td>
+            <td class="p-3">{{ e.get_role_display }}</td>
+            <td class="p-3">{{ e.department|default:"-" }}</td>
+            <td class="p-3 text-right">
+              {% if e.role == "EMPLOYEE" %}
+                <form method="post" action="{% url 'admin_impersonate_employee' e.id %}" class="inline">
+                  {% csrf_token %}
+                  <button class="inline-flex items-center justify-center mr-3 text-slate-700 hover:text-slate-900" type="submit" title="Login as employee" aria-label="Login as employee">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path d="M10 17l5-5-5-5" />
+      <path d="M15 12H3" />
+    </svg>
+  </button>
+                </form>
+              {% endif %}
+              <a class="text-slate-700 hover:underline mr-3" href="{% url 'employee_edit' e.id %}">Edit</a>
+              <a class="text-slate-700 hover:underline" href="{% url 'employee_reset_password' e.id %}">Reset password</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td class="p-3 text-slate-500" colspan="6">No users yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

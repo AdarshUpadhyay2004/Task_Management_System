@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Productivity Heatmap{% endblock %}
+{% block header %}Productivity Heatmap{% endblock %}
+{% block content %}
+  <div class="space-y-6">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-semibold text-slate-900">Daily Productivity</h2>
+          <p class="mt-2 text-sm text-slate-600">A GitHub-style heatmap showing the last 90 days of tracked work hours.</p>
+        </div>
+
+        {% if employees %}
+          <form method="get" class="flex items-end gap-3">
+            <div>
+              <label class="block text-sm font-medium text-slate-700">Employee</label>
+              <select name="user" class="mt-1 rounded-xl border border-slate-300 px-3 py-2 bg-white">
+                <option value="">My data</option>
+                {% for employee in employees %}
+                  <option value="{{ employee.id }}" {% if selected_user_id == employee.id|stringformat:"s" %}selected{% endif %}>
+                    {{ employee.get_full_name|default:employee.email }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <button class="rounded-xl bg-slate-900 text-white px-4 py-2 hover:bg-slate-800">Apply</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <div class="flex items-center justify-between gap-4 mb-4">
+        <div id="heatmap-title" class="font-semibold text-slate-900">Loading heatmap...</div>
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+          <span>Less</span>
+          <span class="h-3 w-3 rounded-sm bg-slate-100 border border-slate-200"></span>
+          <span class="h-3 w-3 rounded-sm bg-sky-100"></span>
+          <span class="h-3 w-3 rounded-sm bg-sky-300"></span>
+          <span class="h-3 w-3 rounded-sm bg-sky-600"></span>
+          <span>More</span>
+        </div>
+      </div>
+
+      <div id="heatmap-tooltip" class="hidden fixed z-50 rounded-lg bg-slate-900 text-white text-xs px-3 py-2 shadow-lg pointer-events-none"></div>
+      <div id="heatmap-grid" class="overflow-x-auto"></div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+      <h3 class="font-semibold text-slate-900">Tasks Worked On</h3>
+      <p class="mt-2 text-sm text-slate-600">Click any day in the heatmap to see the tasks worked on for that date.</p>
+      <div id="selected-day" class="mt-4 text-sm text-slate-700">Select a day to view details.</div>
+      <div id="task-list" class="mt-4 space-y-2"></div>
+    </div>
+  </div>
+
+  <script>
+    const selectedUserId = "{{ selected_user_id }}";
+    const apiUrl = selectedUserId ? `/api/heatmap/?user=${selectedUserId}` : "/api/heatmap/";
+    const heatmapGrid = document.getElementById("heatmap-grid");
+    const tooltip = document.getElementById("heatmap-tooltip");
+    const heatmapTitle = document.getElementById("heatmap-title");
+    const selectedDay = document.getElementById("selected-day");
+    const taskList = document.getElementById("task-list");
+
+    function getColorClass(hours) {
+      if (hours === 0) return "bg-slate-100 border-slate-200";
+      if (hours <= 2) return "bg-sky-100 border-sky-200";
+      if (hours <= 5) return "bg-sky-300 border-sky-300";
+      return "bg-sky-600 border-sky-600";
+    }
+
+    function formatHours(hours) {
+      if (Number.isInteger(hours)) {
+        return `${hours} hour${hours === 1 ? "" : "s"}`;
+      }
+      return `${hours} hours`;
+    }
+
+    function formatDateLabel(dateString) {
+      const date = new Date(`${dateString}T00:00:00`);
+      return date.toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+      });
+    }
+
+    function showTooltip(event, text) {
+      tooltip.textContent = text;
+      tooltip.classList.remove("hidden");
+      tooltip.style.left = `${event.pageX + 12}px`;
+      tooltip.style.top = `${event.pageY + 12}px`;
+    }
+
+    function hideTooltip() {
+      tooltip.classList.add("hidden");
+    }
+
+    function renderTaskDetails(dateKey, tasksByDay, hours) {
+      selectedDay.textContent = `${formatHours(hours)} worked on ${formatDateLabel(dateKey)}.`;
+      const tasks = tasksByDay[dateKey] || [];
+
+      if (!tasks.length) {
+        taskList.innerHTML = '<div class="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">No completed work sessions for this day.</div>';
+        return;
+      }
+
+      taskList.innerHTML = tasks.map((item) => `
+        <div class="rounded-xl border border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
+          <div class="font-medium text-slate-900">${item.task}</div>
+          <div class="text-sm text-slate-500">${formatHours(item.hours)}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderHeatmap(data) {
+      heatmapTitle.textContent = `${data.user.name}'s productivity over the last ${data.range_days} days`;
+
+      const columns = [];
+      data.ordered_days.forEach((dateKey, index) => {
+        const weekIndex = Math.floor(index / 7);
+        if (!columns[weekIndex]) {
+          columns[weekIndex] = [];
+        }
+        columns[weekIndex].push(dateKey);
+      });
+
+      heatmapGrid.innerHTML = `
+        <div class="inline-flex gap-1">
+          ${columns.map((week) => `
+            <div class="grid gap-1">
+              ${week.map((dateKey) => {
+                const hours = data.days[dateKey];
+                return `
+                  <button
+                    type="button"
+                    class="h-4 w-4 rounded-sm border ${getColorClass(hours)}"
+                    data-date="${dateKey}"
+                    data-hours="${hours}"
+                    aria-label="${formatHours(hours)} worked on ${formatDateLabel(dateKey)}"
+                  ></button>
+                `;
+              }).join("")}
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      heatmapGrid.querySelectorAll("button[data-date]").forEach((button) => {
+        button.addEventListener("mouseenter", (event) => {
+          const dateKey = button.dataset.date;
+          const hours = Number(button.dataset.hours);
+          showTooltip(event, `${formatHours(hours)} worked on ${formatDateLabel(dateKey)}`);
+        });
+        button.addEventListener("mousemove", (event) => {
+          tooltip.style.left = `${event.pageX + 12}px`;
+          tooltip.style.top = `${event.pageY + 12}px`;
+        });
+        button.addEventListener("mouseleave", hideTooltip);
+        button.addEventListener("click", () => {
+          renderTaskDetails(button.dataset.date, data.tasks_by_day, Number(button.dataset.hours));
+        });
+      });
+    }
+
+    async function loadHeatmap() {
+      const response = await fetch(apiUrl, {
+        headers: {
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      });
+      const data = await response.json();
+      renderHeatmap(data);
+    }
+
+    loadHeatmap().catch(() => {
+      heatmapTitle.textContent = "Unable to load productivity data right now.";
+      heatmapGrid.innerHTML = '<div class="text-sm text-rose-700">Heatmap data could not be loaded.</div>';
+    });
+  </script>
+{% endblock %}

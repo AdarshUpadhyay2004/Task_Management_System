@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Delete Task{% endblock %}
+{% block header %}Delete Task{% endblock %}
+{% block content %}
+  <div class="bg-white border border-slate-200 rounded-xl p-6 max-w-xl">
+    <p class="text-slate-700">Delete task <span class="font-semibold">{{ task.title }}</span>?</p>
+    <form method="post" class="mt-4 flex gap-2">
+      {% csrf_token %}
+      <button class="px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-500">Delete</button>
+      <a class="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50" href="{% url 'task_list' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}
